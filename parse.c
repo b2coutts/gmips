@@ -1,3 +1,4 @@
+// TODO: replace %i with %d in format strings?
 #include "parse.h"
 #include <string.h>
 #include <stdio.h>
@@ -5,22 +6,27 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-// TODO: why are these not coming from parse.h?
-#include <stdint.h>
-typedef char type_t;
-
 #define ERR "assembler: ERROR: line %u: "
-
-// TODO: needed?
-#define CHK char *tk = strtok(str, " \t"); if(tk){ in.type = -1; \
-    sprintf(err, ERR "unexpected token '%s'", line, tk); return in; }
-    
+// TODO: replace everything with WERR if it works
+#define WERR(msg, ...) sprintf(err, ERR msg, line, __VA_ARGS__);
+// #define WERR(msg, ...) sprintf(err, "testing%i", line, __VA_ARGS__);
 
 // minimum and maximum values
 #define MIN_REG 0
 #define MAX_REG 31
 #define MAX_32 2147483647
 #define MIN_32 (-2147483648)
+
+
+// true iff the given string is a valid label
+// TODO: find the spec and make this conform to it
+int valid_label(const char *str){
+    while(str[0] != '\0'){
+        if(!isalpha(str[0])) return 0;
+        str++;
+    }
+    return 1;
+}
 
 // duplicate a string into a new location in memory
 // TODO: remove if not using
@@ -44,8 +50,7 @@ int isin(int t, int n, ...){
 // true iff the string is entirely whitespace and comment
 int isempty(const char *str){
     for(int i = 0; str[i] != '\0'; i++){
-        if(i == ';') return 1;
-        if(!isspace(i)) return 0;
+        if(!isspace(str[i])) return 0;
     }
     return 1;
 }
@@ -55,6 +60,13 @@ int isempty(const char *str){
     // on failure: set *t = -1, and write an error message to err
 int32_t sint_parse(char *str, int n, type_t *t, char **r, unsigned int line,
                    char *err){
+    if(!str){
+        *t = -1;
+        sprintf(err, ERR "reached end of line; expected %d-bit signed "
+                "integer\n", line, n);
+        return 0;
+    }
+
     char *ret;
     long int i = strtol(str, &ret, 10);
     if(ret == str){
@@ -75,6 +87,12 @@ int32_t sint_parse(char *str, int n, type_t *t, char **r, unsigned int line,
     // on success: return the int; put rest of string in *r if r != 0
     // on failure: set *t = -1, and write an error message to err
 uint8_t reg_parse(char *str, type_t *t, char **r, unsigned int line, char *err){
+    if(!str){
+        *t = -1;
+        sprintf(err, ERR "reached end of line; expected register\n", line);
+        return 0;
+    }
+
     while(isspace(str[0])) str++;
     if(str[0] != '$'){
         *t = -1;
@@ -122,16 +140,28 @@ type_t gettype(const char *str){
     else return -1;
 }
 
-
-struct inst inst_parse(char *str, unsigned int line, char *err){
+struct inst inst_parse(char *str, unsigned int line, char *err,
+                       unsigned int addr, struct AVLTree *lbls){
     struct inst in;
+    in.lbl = 0;
     if(isempty(str)){
         in.type = 0;
         return in;
     }
 
-    // parse instruction type (i.e. opcode)
+    // parse any labels from the beginning of the line
     char *typestr = strtok(str, " \t\n");
+    while(typestr[strlen(typestr)-1] == ':'){
+        typestr[strlen(typestr)-1] = '\0';
+        if(!valid_label(typestr)){
+            in.type = -1;
+            sprintf(err, ERR "invalid label '%s' declared\n", line, typestr);
+            return in;
+        }
+        avl_insert(lbls, typestr, addr);
+        typestr[strlen(typestr)-1] = ':';
+        typestr = strtok(0, " \t\n");
+    }
     in.type = gettype(typestr);
     if(in.type == -1){
         sprintf(err, ERR "invalid operation '%s'\n", line, typestr);
@@ -141,30 +171,30 @@ struct inst inst_parse(char *str, unsigned int line, char *err){
     // TODO: does not ensure commas are there right now
     // TODO: only allows decimal numbers (no hex)
     if(in.type == 1){ // .word
-        in.i = sint_parse(strtok(0, " \t"), 32, &in.type, 0, line, err);
+        in.i = sint_parse(strtok(0, " \t\n"), 32, &in.type, 0, line, err);
         if(in.type == -1) return in;
     }else if(isin(in.type, 4, 2,3,13,14)){ // add, sub, slt, sltu
-        in.d = reg_parse(strtok(0, " \t"), &in.type, 0, line, err);
+        in.d = reg_parse(strtok(0, " \t\n"), &in.type, 0, line, err);
         if(in.type == -1) return in;
-        in.s = reg_parse(strtok(0, " ,\t"), &in.type, 0, line, err);
+        in.s = reg_parse(strtok(0, " ,\t\n"), &in.type, 0, line, err);
         if(in.type == -1) return in;
-        in.t = reg_parse(strtok(0, " ,\t"), &in.type, 0, line, err);
+        in.t = reg_parse(strtok(0, " ,\t\n"), &in.type, 0, line, err);
         if(in.type == -1) return in;
     }else if(isin(in.type, 4, 4,5,6,7)){ // mult, multu, div, divu
-        in.s = reg_parse(strtok(0, " \t"), &in.type, 0, line, err);
+        in.s = reg_parse(strtok(0, " \t\n"), &in.type, 0, line, err);
         if(in.type == -1) return in;
-        in.t = reg_parse(strtok(0, " ,\t"), &in.type, 0, line, err);
+        in.t = reg_parse(strtok(0, " ,\t\n"), &in.type, 0, line, err);
         if(in.type == -1) return in;
     }else if(isin(in.type, 3, 8,9,10)){ // mfhi, mflo, lis
-        in.d = reg_parse(strtok(0, " \t"), &in.type, 0, line, err);
+        in.d = reg_parse(strtok(0, " \t\n"), &in.type, 0, line, err);
         if(in.type == -1) return in;
     }else if(isin(in.type, 2, 17,18)){ // jr, jalr
-        in.s = reg_parse(strtok(0, " \t"), &in.type, 0, line, err);
+        in.s = reg_parse(strtok(0, " \t\n"), &in.type, 0, line, err);
         if(in.type == -1) return in;
     }else if(isin(in.type, 2, 11,12)){ // lw, sw
-        in.d = reg_parse(strtok(0, " \t"), &in.type, 0, line, err);
+        in.t = reg_parse(strtok(0, " \t\n"), &in.type, 0, line, err);
         if(in.type == -1) return in;
-        char *next = strtok(0, " \t");
+        char *next = strtok(0, " \t\n");
         in.i = sint_parse(next, 16, &in.type, &next, line, err);
         if(in.type == -1) return in;
         if(next[0] != '('){
@@ -181,17 +211,36 @@ struct inst inst_parse(char *str, unsigned int line, char *err){
         }
     // TODO: there is no check for garbage after i
     }else if(isin(in.type, 2, 15,16)){ // beq, bne
-        in.s = reg_parse(strtok(0, " \t"), &in.type, 0, line, err);
+        in.s = reg_parse(strtok(0, " \t\n"), &in.type, 0, line, err);
         if(in.type == -1) return in;
-        in.t = reg_parse(strtok(0, " ,\t"), &in.type, 0, line, err);
+        in.t = reg_parse(strtok(0, " ,\t\n"), &in.type, 0, line, err);
         if(in.type == -1) return in;
-        char *next = strtok(0, " \t");
-        in.i = sint_parse(next, 16, &in.type, 0, line, err);
-        if(in.type == -1) return in;
+
+        // parse label or 16-bit signed int
+        char *next = strtok(0, " \t\n");
+        if(!next){
+            in.type = -1;
+            sprintf(err, ERR "reached end of line; expected 16-bit signed int "
+                             "or label\n", line);
+            return in;
+        }else if(isdigit(next[0])){ // try to parse a number
+            in.i = sint_parse(next, 16, &in.type, 0, line, err);
+            if(in.type == -1) return in;
+        }else{ // try to parse a label
+            if(!valid_label(next)){
+                //sprintf(err, ERR "invalid label '%s' referenced\n",
+                    // line, typestr);
+                in.type = -1;
+                WERR("invalid label '%s' referenced\n", next);
+                return in;
+            }else{
+                in.lbl = strdup(next);
+            }
+        }
     }
 
-    char *c = strtok(0, " \t");
-    if(c && c[0] != ';'){
+    char *c = strtok(0, " \t\n");
+    if(c){
         in.type = -1;
         sprintf(err, ERR "unexpected token '%s' after valid line\n", line, c);
     }
