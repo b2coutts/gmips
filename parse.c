@@ -20,8 +20,9 @@
 // true iff the given string is a valid label
 // TODO: find the spec and make this conform to it
 int valid_label(const char *str){
-    while(str[0] != '\0'){
-        if(!isalpha(str[0])) return 0;
+    if(!isalpha(str[0])) return 0;
+    while(str[1] != '\0'){
+        if(!isalpha(str[1]) && !isdigit(str[1])) return 0;
         str++;
     }
     return 1;
@@ -124,7 +125,7 @@ type_t gettype(const char *str){
     else if(strcmp(str, "multu") == 0) return 5;
     else if(strcmp(str, "div") == 0) return 6;
     else if(strcmp(str, "divu") == 0) return 7;
-    else if(strcmp(str, "mfi") == 0) return 8;
+    else if(strcmp(str, "mfhi") == 0) return 8;
     else if(strcmp(str, "mflo") == 0) return 9;
     else if(strcmp(str, "lis") == 0) return 10;
     else if(strcmp(str, "lw") == 0) return 11;
@@ -142,14 +143,10 @@ struct inst inst_parse(char *str, unsigned int line, char *err,
                        unsigned int addr, struct AVLTree *lbls){
     struct inst in;
     in.lbl = 0;
-    if(isempty(str)){
-        in.type = 0;
-        return in;
-    }
 
     // parse any labels from the beginning of the line
     char *typestr = strtok(str, " \t\n");
-    while(typestr[strlen(typestr)-1] == ':'){
+    while(typestr && typestr[strlen(typestr)-1] == ':'){
         typestr[strlen(typestr)-1] = '\0';
         if(!valid_label(typestr)){
             in.type = -1;
@@ -160,6 +157,12 @@ struct inst inst_parse(char *str, unsigned int line, char *err,
         typestr[strlen(typestr)-1] = ':';
         typestr = strtok(0, " \t\n");
     }
+
+    if(!typestr || isempty(typestr)){
+        in.type = 0;
+        return in;
+    }
+
     in.type = gettype(typestr);
     if(in.type == -1){
         WERR("invalid operation '%s'\n", typestr);
