@@ -7,9 +7,8 @@
 #include <stdlib.h>
 
 #define ERR "assembler: ERROR: line %u: "
-// TODO: replace everything with WERR if it works
 #define WERR(msg, ...) sprintf(err, ERR msg, line, __VA_ARGS__);
-// #define WERR(msg, ...) sprintf(err, "testing%i", line, __VA_ARGS__);
+#define SERR(msg) sprintf(err, ERR msg, line);
 
 // minimum and maximum values
 #define MIN_REG 0
@@ -62,8 +61,7 @@ int32_t sint_parse(char *str, int n, type_t *t, char **r, unsigned int line,
                    char *err){
     if(!str){
         *t = -1;
-        sprintf(err, ERR "reached end of line; expected %d-bit signed "
-                "integer\n", line, n);
+        WERR("reached end of line; expected %d-bit signed integer\n", n);
         return 0;
     }
 
@@ -71,11 +69,11 @@ int32_t sint_parse(char *str, int n, type_t *t, char **r, unsigned int line,
     long int i = strtol(str, &ret, 10);
     if(ret == str){
         *t = -1;
-        sprintf(err, ERR "failed to parse %i-bit signed int\n", line, n);
+        WERR("failed to parse %i-bit signed int\n", n);
         return 0;
     }else if(i < MIN_32 || i > MAX_32){
         *t = -1;
-        sprintf(err, ERR "%i-bit signed int '%ld' out of range\n", line, n, i);
+        WERR("%i-bit signed int '%ld' out of range\n", n, i);
         return 0;
     }
 
@@ -89,14 +87,14 @@ int32_t sint_parse(char *str, int n, type_t *t, char **r, unsigned int line,
 uint8_t reg_parse(char *str, type_t *t, char **r, unsigned int line, char *err){
     if(!str){
         *t = -1;
-        sprintf(err, ERR "reached end of line; expected register\n", line);
+        SERR("reached end of line; expected register\n");
         return 0;
     }
 
     while(isspace(str[0])) str++;
     if(str[0] != '$'){
         *t = -1;
-        sprintf(err, ERR "expected '$' before register number\n", line);
+        SERR("expected '$' before register number\n");
         return 0;
     }
     
@@ -104,11 +102,11 @@ uint8_t reg_parse(char *str, type_t *t, char **r, unsigned int line, char *err){
     long int i = strtol(str+1, &ret, 10);
     if(ret == str){
         *t = -1;
-        sprintf(err, ERR "failed to parse register number\n", line);
+        SERR("failed to parse register number\n");
         return 0;
     }else if(i < MIN_REG || i > MAX_REG){
         *t = -1;
-        sprintf(err, ERR "register number '%ld' out of range\n", line, i);
+        WERR("register number '%ld' out of range\n", i);
         return 0;
     }
 
@@ -155,7 +153,7 @@ struct inst inst_parse(char *str, unsigned int line, char *err,
         typestr[strlen(typestr)-1] = '\0';
         if(!valid_label(typestr)){
             in.type = -1;
-            sprintf(err, ERR "invalid label '%s' declared\n", line, typestr);
+            WERR("invalid label '%s' declared\n", typestr);
             return in;
         }
         avl_insert(lbls, typestr, addr);
@@ -164,7 +162,7 @@ struct inst inst_parse(char *str, unsigned int line, char *err,
     }
     in.type = gettype(typestr);
     if(in.type == -1){
-        sprintf(err, ERR "invalid operation '%s'\n", line, typestr);
+        WERR("invalid operation '%s'\n", typestr);
         return in;
     }
 
@@ -199,7 +197,7 @@ struct inst inst_parse(char *str, unsigned int line, char *err,
         if(in.type == -1) return in;
         if(next[0] != '('){
             in.type = -1;
-            sprintf(err, ERR "expected '(' before $s register\n", line);
+            SERR("expected '(' before $s register\n");
             return in;
         }
 
@@ -207,7 +205,7 @@ struct inst inst_parse(char *str, unsigned int line, char *err,
         if(in.type == -1) return in;
         if(next[0] != ')'){
             in.type = -1;
-            sprintf(err, ERR "expected ')' after $s register\n", line);
+            SERR("expected ')' after $s register\n");
         }
     // TODO: there is no check for garbage after i
     }else if(isin(in.type, 2, 15,16)){ // beq, bne
@@ -220,16 +218,13 @@ struct inst inst_parse(char *str, unsigned int line, char *err,
         char *next = strtok(0, " \t\n");
         if(!next){
             in.type = -1;
-            sprintf(err, ERR "reached end of line; expected 16-bit signed int "
-                             "or label\n", line);
+            SERR("reached end of line; expected 16-bit signed int or label\n");
             return in;
         }else if(isdigit(next[0])){ // try to parse a number
             in.i = sint_parse(next, 16, &in.type, 0, line, err);
             if(in.type == -1) return in;
         }else{ // try to parse a label
             if(!valid_label(next)){
-                //sprintf(err, ERR "invalid label '%s' referenced\n",
-                    // line, typestr);
                 in.type = -1;
                 WERR("invalid label '%s' referenced\n", next);
                 return in;
@@ -242,7 +237,7 @@ struct inst inst_parse(char *str, unsigned int line, char *err,
     char *c = strtok(0, " \t\n");
     if(c){
         in.type = -1;
-        sprintf(err, ERR "unexpected token '%s' after valid line\n", line, c);
+        WERR("unexpected token '%s' after valid line\n", c);
     }
 
     return in;
