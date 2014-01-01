@@ -97,6 +97,7 @@ void bin_print(word w){
 }
 
 int main(){
+    char *asdf = malloc(100000);
     size_t array_size = ARRAY_BUFFER; // size of instruction list (array)
     struct instline *code = malloc(sizeof(struct instline) * array_size);
     long int addr = 0; // keeps track of index in above array
@@ -118,6 +119,7 @@ int main(){
         }else if(in.type != 0){
             if(addr >= array_size){ // enlarge array if needed
                 array_size += ARRAY_BUFFER;
+                printf("reallocing to %d\n", array_size);
                 code = realloc(code, array_size);
             }
             code[addr].i = in;
@@ -147,7 +149,7 @@ int main(){
     }
     */
 
-    // print out textual binary
+    // print out binary
     for(long int i = 0; i < addr; i++){
         //printf("%08ld: ", i*4);
         bin_print(inst_encode(code[i].i));

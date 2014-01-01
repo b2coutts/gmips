@@ -1,3 +1,7 @@
+// TODO: right now, the parser ignores all garbage after the ends of lines
+// TODO: what exactly are the bounds on .word arguments? can they be greater
+    // than 2^31, in which case they're unsigned instead of signed? maybe hex
+    // numbers are always unsigned? try to find the spec. 
 #include "parse.h"
 #include <string.h>
 #include <stdio.h>
@@ -50,7 +54,7 @@ int isempty(const char *str){
 // return 2^n
 long int pwr2(int p){
     if(p == 0) return 1;
-    else return p * pwr2(p-1);
+    else return 2 * pwr2(p-1);
 }
 
 // attempt to parse a signed n-bit integer from the beginning of str
@@ -65,7 +69,13 @@ int32_t sint_parse(char *str, int n, type_t *t, char **r, unsigned int line,
     }
 
     char *ret;
-    long int i = strtol(str, &ret, 10);
+    long int i = strtol(str, &ret, 0);
+
+    // special case for hex .word input
+    if(n == 32 && str[0] == '0' && str[1] == 'x'){
+        if(i >= 2147483648) i -= 4294967296; // convert from unsigned to signed
+    }
+
     if(ret == str){
         *t = -1;
         WERR("failed to parse %d-bit signed int\n", n);
@@ -149,6 +159,10 @@ struct inst inst_parse(char *str, unsigned int line, char *err,
             in.type = -1;
             WERR("invalid label '%s' declared\n", typestr);
             return in;
+        }else if(avl_lookup(lbls, typestr)){
+            in.type = -1;
+            WERR("duplicate label '%s' declared\n", typestr);
+            return in;
         }
         avl_insert(lbls, typestr, addr);
         typestr[strlen(typestr)-1] = ':';
@@ -169,8 +183,19 @@ struct inst inst_parse(char *str, unsigned int line, char *err,
     // TODO: does not ensure commas are there right now
     // TODO: only allows decimal numbers (no hex)
     if(in.type == 1){ // .word
-        in.i = sint_parse(strtok(0, " \t\n"), 32, &in.type, 0, line, err);
-        if(in.type == -1) return in;
+        char *num = strtok(0, " \t\n");
+        if(num && isalpha(num[0])){ // attempt to parse a label
+            if(valid_label(num)){
+                in.lbl = strdup(num);
+            }else{
+                in.type = -1;
+                WERR("invalid label '%s' referenced\n", num);
+                return in;
+            }
+        }else{
+            in.i = sint_parse(num, 32, &in.type, 0, line, err);
+            if(in.type == -1) return in;
+        }
     }else if(isin(in.type, 4, 2,3,13,14)){ // add, sub, slt, sltu
         in.d = reg_parse(strtok(0, " \t\n"), &in.type, 0, line, err);
         if(in.type == -1) return in;
@@ -220,7 +245,7 @@ struct inst inst_parse(char *str, unsigned int line, char *err,
             in.type = -1;
             SERR("reached end of line; expected 16-bit signed int or label\n");
             return in;
-        }else if(isdigit(next[0])){ // try to parse a number
+        }else if(isdigit(next[0]) || next[0] == '-'){ // try to parse a number
             in.i = sint_parse(next, 16, &in.type, 0, line, err);
             if(in.type == -1) return in;
         }else{ // try to parse a label
@@ -268,7 +293,7 @@ void lbl_replace(struct AVLTree *lbls, struct inst *in, unsigned int line,
                          in->lbl, *dat);
                     return;
                 }
-                in->i = *dat;
+                in->i = *dat * 4;
             }
             free(in->lbl);
             in->lbl = 0;
@@ -302,13 +327,15 @@ word get_opcode(type_t t){
 // convert a signed two's complement n-bit integer to an unsigned n-bit integer
 // with the same bits
 word toun(int32_t i, int n){
+    long int a = (long int)i + pwr2(n);
+    word w = i;
     return i<0 ? i + pwr2(n) : i;
 }
 
 word inst_encode(struct inst in){
     word opc = get_opcode(in.type);
     if(in.type == 1){ // .word
-        return toun(in.i, 32);
+        return in.i;
     }else if(isin(in.type, 4, 2,3,13,14)){ // add, sub, slt, sltu
         return opc + (in.d << 11) + (in.t << 16) + (in.s << 21);
     }else if(isin(in.type, 4, 4,5,6,7)){ // mult, multu, div, divu
