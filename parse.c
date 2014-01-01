@@ -5,16 +5,10 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+// error messaging macros
 #define ERR "assembler: ERROR: line %u: "
 #define WERR(msg, ...) sprintf(err, ERR msg, line, __VA_ARGS__);
 #define SERR(msg) sprintf(err, ERR msg, line);
-
-// minimum and maximum values
-#define MIN_REG 0
-#define MAX_REG 31
-#define MAX_32 2147483647
-#define MIN_32 (-2147483648)
-
 
 // true iff the given string is a valid label
 // TODO: find the spec and make this conform to it
@@ -53,6 +47,12 @@ int isempty(const char *str){
     return 1;
 }
 
+// return 2^n
+long int pwr2(int p){
+    if(p == 0) return 1;
+    else return p * pwr2(p-1);
+}
+
 // attempt to parse a signed n-bit integer from the beginning of str
     // on success: return the int; put rest of string in *r if r != 0
     // on failure: set *t = -1, and write an error message to err
@@ -70,7 +70,7 @@ int32_t sint_parse(char *str, int n, type_t *t, char **r, unsigned int line,
         *t = -1;
         WERR("failed to parse %d-bit signed int\n", n);
         return 0;
-    }else if(i < MIN_32 || i > MAX_32){
+    }else if(i < -pwr2(n-1) || i >= pwr2(n-1)){
         *t = -1;
         WERR("%d-bit signed int '%ld' out of range\n", n, i);
         return 0;
@@ -103,7 +103,7 @@ uint8_t reg_parse(char *str, type_t *t, char **r, unsigned int line, char *err){
         *t = -1;
         SERR("failed to parse register number\n");
         return 0;
-    }else if(i < MIN_REG || i > MAX_REG){
+    }else if(i < 0 || i > 31){
         *t = -1;
         WERR("register number '%ld' out of range\n", i);
         return 0;
@@ -251,9 +251,24 @@ void lbl_replace(struct AVLTree *lbls, struct inst *in, unsigned int line,
             in->type = -1;
             WERR("referenced label '%s' was never defined\n", in->lbl);
         }else{
-            // TODO: implement labels for more than just beq/bne
-            if(in->type == 15 || in->type == 16){ // beq, bne
-                in->i = *dat - addr - 1;
+            // TODO: are beq, bne, and .word all?
+            if(isin(in->type, 2, 15,16)){ // beq, bne
+                long int branch = *dat - addr - 1;
+                if(branch < -pwr2(15) || branch >= pwr2(15)){
+                    in->type = -1;
+                    WERR("branch to label '%s' out of range (%ld)\n",
+                         in->lbl, branch);
+                    return;
+                }
+                in->i = branch;
+            }else if(in->type == 1){ // .word, yo
+                if(*dat >= pwr2(31)){
+                    in->type = -1;
+                    WERR(".word of label '%s' out of range (%ld)\n",
+                         in->lbl, *dat);
+                    return;
+                }
+                in->i = *dat;
             }
             free(in->lbl);
             in->lbl = 0;
