@@ -5,6 +5,7 @@
 #include "avl.h"
 
 typedef char type_t;
+typedef uint32_t word;
 
 // a single MIPS instruction
 // TODO: union?
@@ -34,9 +35,9 @@ void lbl_replace(struct AVLTree *lbls, struct inst *in, unsigned int line,
                  long int addr, char *err);
 
 // decode an inst from a 32-bit word
-struct inst inst_decode(uint32_t w);
+struct inst inst_decode(word w);
 
 // encode an inst into a 32-bit word
-uint32_t inst_encode(struct inst in);
+word inst_encode(struct inst in);
 
 #endif
