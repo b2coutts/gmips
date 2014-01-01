@@ -25,9 +25,6 @@ struct inst {
     char *lbl;
 };
 
-// TODO: needed?
-struct inst inst_create(type_t ty, uint8_t d, uint8_t s, uint8_t t, int i);
-
 // parse an inst from str. If an error occurs, write an error message to err
 struct inst inst_parse(char *str, unsigned int line, char *err,
     long int addr, struct AVLTree *lbls);
