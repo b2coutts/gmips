@@ -1,4 +1,3 @@
-// TODO: replace %i with %d in format strings?
 #include "parse.h"
 #include <string.h>
 #include <stdio.h>
@@ -29,13 +28,12 @@ int valid_label(const char *str){
 }
 
 // duplicate a string into a new location in memory
-// TODO: remove if not using
 char *strdup(const char *str){
     char *ret = malloc(strlen(str)+1);
     return strcpy(ret, str);
 }
 
-// true iff str is in one of the optional arguments
+// true iff t is in one of the n optional arguments
 int isin(int t, int n, ...){
     va_list vl;
     va_start(vl, n);
@@ -70,11 +68,11 @@ int32_t sint_parse(char *str, int n, type_t *t, char **r, unsigned int line,
     long int i = strtol(str, &ret, 10);
     if(ret == str){
         *t = -1;
-        WERR("failed to parse %i-bit signed int\n", n);
+        WERR("failed to parse %d-bit signed int\n", n);
         return 0;
     }else if(i < MIN_32 || i > MAX_32){
         *t = -1;
-        WERR("%i-bit signed int '%ld' out of range\n", n, i);
+        WERR("%d-bit signed int '%ld' out of range\n", n, i);
         return 0;
     }
 
@@ -116,7 +114,6 @@ uint8_t reg_parse(char *str, type_t *t, char **r, unsigned int line, char *err){
 }
 
 // return the typecode for the string
-// TODO: ignore case?
 type_t gettype(const char *str){
     if(strcmp(str, ".word") == 0) return 1;
     else if(strcmp(str, "add") == 0) return 2;
@@ -140,7 +137,7 @@ type_t gettype(const char *str){
 }
 
 struct inst inst_parse(char *str, unsigned int line, char *err,
-                       unsigned int addr, struct AVLTree *lbls){
+                       long int addr, struct AVLTree *lbls){
     struct inst in;
     in.lbl = 0;
 
@@ -244,4 +241,22 @@ struct inst inst_parse(char *str, unsigned int line, char *err,
     }
 
     return in;
+}
+
+void lbl_replace(struct AVLTree *lbls, struct inst *in, unsigned int line,
+                 long int addr, char *err){
+    if(in->lbl){
+        long int *dat = avl_lookup(lbls, in->lbl);
+        if(!dat){
+            in->type = -1;
+            WERR("referenced label '%s' was never defined\n", in->lbl);
+        }else{
+            // TODO: implement labels for more than just beq/bne
+            if(in->type == 15 || in->type == 16){ // beq, bne
+                in->i = *dat - addr - 1;
+            }
+            free(in->lbl);
+            in->lbl = 0;
+        }
+    }
 }

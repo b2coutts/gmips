@@ -1,9 +1,12 @@
 // testing driver for parse.c
+// TODO: make line numbers unsigned long ints instead of unsigned ints?
 #include "parse.h"
 #include "avl.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
+#define ARRAY_BUFFER 1000
 
 // get the op name from the type_t
 char *getop(type_t t){
@@ -56,34 +59,70 @@ void inst_print(struct inst in){
 void label_dump(struct node *n){
     if(n){
         label_dump(n->l);
-        printf("%s->%u\n", n->k, n->d);
+        printf("%s->%ld\n", n->k, n->d);
         label_dump(n->r);
     }
 }
 
-int main(){
-    size_t len = 0;
-    char *line = 0;
-    char *err = malloc(100);
-    struct AVLTree *lbls = avl_create();
-    unsigned int addr = 0; // TODO: long?
-    unsigned int nline = 0;
+// struct for holding instructions and line numbers
+struct instline {
+    struct inst i;
+    long int l;
+};
 
-    printf("Code dump:\n");
+int main(){
+    size_t array_size = ARRAY_BUFFER; // size of instruction list (array)
+    struct instline *code = malloc(sizeof(struct instline) * array_size);
+    long int addr = 0; // keeps track of index in above array
+    size_t len = 0; // holds lengths of lines from stdin
+    char *line = 0; // holds lines from stdin
+    char *err = malloc(100); // holds error messages
+    struct AVLTree *lbls = avl_create(); // holds the symbol table
+    unsigned int nline = 0; // keeps track of line number from stdin
+
+    // read instructions into array
     while(getline(&line, &len, stdin) != -1){
         nline++;
         remove_comment(line);
         struct inst in = inst_parse(line, nline, err, addr, lbls);
+
         if(in.type == -1){
             fprintf(stderr, "%s", err);
             return 1;
         }else if(in.type != 0){
-            printf("%08d: ", addr);
-            inst_print(in);
-            addr += 4;
+            if(addr >= array_size){ // enlarge array if needed
+                array_size += ARRAY_BUFFER;
+                code = realloc(code, array_size);
+            }
+            code[addr].i = in;
+            code[addr].l = nline;
+            addr++;
         }
+    }
+
+    // print stuff
+    printf("Code dump:\n");
+    for(long int i = 0; i < addr; i++){
+        printf("%08ld: ", i*4);
+        inst_print(code[i].i);
     }
 
     printf("\nLabel dump:\n");
     label_dump(lbls->root);
+    printf("\n");
+
+    // replace labels
+    for(long int i = 0 ; i < addr; i++){
+        lbl_replace(lbls, &code[i].i, code[i].l, i, err);
+        if(code[i].i.type == -1){
+            fprintf(stderr, "%s", err);
+            return 1;
+        }
+    }
+
+    printf("Code dump: (after replacing labels)\n");
+    for(long int i = 0; i < addr; i++){
+        printf("%08ld: ", i*4);
+        inst_print(code[i].i);
+    }
 }
