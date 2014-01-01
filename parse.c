@@ -275,3 +275,50 @@ void lbl_replace(struct AVLTree *lbls, struct inst *in, unsigned int line,
         }
     }
 }
+
+// get the opcode of an instruction type
+word get_opcode(type_t t){
+    if(t == 1) return 0;
+    else if(t == 2) return 32;
+    else if(t == 3) return 34;
+    else if(t == 4) return 24;
+    else if(t == 5) return 25;
+    else if(t == 6) return 26;
+    else if(t == 7) return 27;
+    else if(t == 8) return 16;
+    else if(t == 9) return 18;
+    else if(t == 10) return 20;
+    else if(t == 11) return 35; // on left
+    else if(t == 12) return 43; // on left
+    else if(t == 13) return 42;
+    else if(t == 14) return 43;
+    else if(t == 15) return 4; // on left
+    else if(t == 16) return 5; // on left
+    else if(t == 17) return 8;
+    else if(t == 18) return 9;
+    else return 999999; // wat
+}
+
+// convert a signed two's complement n-bit integer to an unsigned n-bit integer
+// with the same bits
+word toun(int32_t i, int n){
+    return i<0 ? i + pwr2(n) : i;
+}
+
+word inst_encode(struct inst in){
+    word opc = get_opcode(in.type);
+    if(in.type == 1){ // .word
+        return toun(in.i, 32);
+    }else if(isin(in.type, 4, 2,3,13,14)){ // add, sub, slt, sltu
+        return opc + (in.d << 11) + (in.t << 16) + (in.s << 21);
+    }else if(isin(in.type, 4, 4,5,6,7)){ // mult, multu, div, divu
+        return opc + (in.t << 16) + (in.s << 21);
+    }else if(isin(in.type, 3, 8,9,10)){ // mfhi, mflo, lis
+        return opc + (in.d << 11);
+    }else if(isin(in.type, 4, 11,12,15,16)){ // lw, sw, beq, bne
+        return toun(in.i, 16) + (in.t << 16) + (in.s << 21) + (opc << 26);
+    }else if(isin(in.type, 2, 17,18)){ // jr,jalr
+        return opc + (in.s << 21);
+    }
+    return 0; // unreachable
+}
