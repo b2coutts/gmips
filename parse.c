@@ -72,17 +72,23 @@ int32_t sint_parse(char *str, int n, type_t *t, char **r, unsigned int line,
     long int i = strtol(str, &ret, 0);
 
     // special case for hex .word input
-    if(n == 32 && str[0] == '0' && str[1] == 'x'){
-        if(i >= 2147483648) i -= 4294967296; // convert from unsigned to signed
+    int ishex = 0;
+    if(str[0] == '0' && str[1] == 'x'){
+        //if(i >= pwr2(n-1)) i -= pwr2(n); // convert from unsigned to signed
+        ishex = 1;
     }
 
     if(ret == str){
         *t = -1;
         WERR("failed to parse %d-bit signed int\n", n);
         return 0;
-    }else if(i < -pwr2(n-1) || i >= pwr2(n-1)){
+    }else if((!ishex) && (i < -pwr2(n-1) || i >= pwr2(n-1))){
         *t = -1;
         WERR("%d-bit signed int '%ld' out of range\n", n, i);
+        return 0;
+    }else if(ishex && (i > pwr2(n) || i < 0)){
+        *t = -1;
+        WERR("%d-bit unsigned int '%ld' out of range\n", n, i);
         return 0;
     }
 
@@ -327,8 +333,6 @@ word get_opcode(type_t t){
 // convert a signed two's complement n-bit integer to an unsigned n-bit integer
 // with the same bits
 word toun(int32_t i, int n){
-    long int a = (long int)i + pwr2(n);
-    word w = i;
     return i<0 ? i + pwr2(n) : i;
 }
 
