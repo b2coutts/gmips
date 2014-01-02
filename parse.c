@@ -83,9 +83,14 @@ int32_t sint_parse(char *str, int n, type_t *t, char **r, unsigned int line,
         WERR("failed to parse %d-bit signed int\n", n);
         return 0;
     }else if((!ishex) && (i < -pwr2(n-1) || i >= pwr2(n-1))){
-        *t = -1;
-        WERR("%d-bit signed int '%ld' out of range\n", n, i);
-        return 0;
+        // TODO: this is dumb; is it really in the spec?
+        if(i > 0 && i < pwr2(n)){
+            i -= pwr2(n);
+        }else{
+            *t = -1;
+            WERR("%d-bit signed int '%ld' out of range\n", n, i);
+            return 0;
+        }
     }else if(ishex && (i > pwr2(n) || i < 0)){
         *t = -1;
         WERR("%d-bit unsigned int '%ld' out of range\n", n, i);
