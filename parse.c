@@ -335,10 +335,38 @@ word get_opcode(type_t t){
     else return 999999; // wat
 }
 
+// inverse of get_opcode; gets the instruction type of an opcode
+type_t get_itype(word w){
+    if(w == 0) return 1;
+    else if(w == 32) return 2;
+    else if(w == 34) return 3;
+    else if(w == 24) return 4;
+    else if(w == 25) return 5;
+    else if(w == 26) return 6;
+    else if(w == 27) return 7;
+    else if(w == 16) return 8;
+    else if(w == 18) return 9;
+    else if(w == 20) return 10;
+    else if(w == 35) return 11; // on left
+    else if(w == 43) return 12; // on left
+    else if(w == 42) return 13;
+    else if(w == 43) return 14;
+    else if(w == 4) return 15; // on left
+    else if(w == 5) return 16; // on left
+    else if(w == 8) return 17;
+    else if(w == 9) return 18;
+    else return -1;
+}
+
 // convert a signed two's complement n-bit integer to an unsigned n-bit integer
 // with the same bits
 word toun(int32_t i, int n){
     return i<0 ? i + pwr2(n) : i;
+}
+
+// inverse of the above; convert an unsigned int to a bit-equivalent signed int
+int32_t tosign(word w, int n){
+    return w >= pwr2(n-1) ? w - pwr2(n) : w;
 }
 
 word inst_encode(struct inst in){
@@ -357,4 +385,28 @@ word inst_encode(struct inst in){
         return opc + (in.s << 21);
     }
     return 0; // unreachable
+}
+
+struct inst inst_decode(word w){
+    struct inst in;
+    in.lbl = 0;
+
+    // parse a bunch of regions of the word
+    word leftop = w >> 26;
+    word rightop = (w << 26) >> 26;
+    type_t ltype = get_itype(leftop);
+    type_t rtype = get_itype(rightop);
+    in.s = (w << 6) >> 27;
+    in.t = (w << 11) >> 27;
+    in.d = (w << 16) >> 27;
+    in.i = tosign((w << 16) >> 16, 16);
+    if(isin(ltype, 4, 11,12,15,16)){ // lw, sw, beq, bne
+        in.type = ltype;
+    }else if(isin(rtype, 13, 2,3,4,5,6,7,8,9,10,13,14,17,18)){ // all others
+        in.type = rtype;
+    }else{ // not valid command
+        in.type = -1;
+    }
+
+    return in;
 }
