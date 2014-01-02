@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#define ARRAY_BUFFER 1000
+#define ARRAY_SIZE 1000000
 
 // get the op name from the type_t
 char *getop(type_t t){
@@ -96,10 +96,11 @@ void bin_print(word w){
     putchar((w << 24) >> 24);
 }
 
+// stop those annoying compiler warnings
+size_t getline(char **lineptr, size_t *n, FILE *stream);
+
 int main(){
-    char *asdf = malloc(100000);
-    size_t array_size = ARRAY_BUFFER; // size of instruction list (array)
-    struct instline *code = malloc(sizeof(struct instline) * array_size);
+    struct instline *code = malloc(sizeof(struct instline) * ARRAY_SIZE);
     long int addr = 0; // keeps track of index in above array
     size_t len = 0; // holds lengths of lines from stdin
     char *line = 0; // holds lines from stdin
@@ -117,16 +118,23 @@ int main(){
             fprintf(stderr, "%s", err);
             return 1;
         }else if(in.type != 0){
-            if(addr >= array_size){ // enlarge array if needed
-                array_size += ARRAY_BUFFER;
-                printf("reallocing to %d\n", array_size);
-                code = realloc(code, array_size);
-            }
             code[addr].i = in;
             code[addr].l = nline;
             addr++;
         }
     }
+
+    // print stuff
+    /*
+    printf("\nLabel dump:\n");
+    label_dump(lbls->root);
+    printf("\n");
+    printf("Code dump:\n");
+    for(long int i = 0; i < addr; i++){
+        printf("%08ld: ", i*4);
+        inst_print(code[i].i);
+    }
+    */
 
     // replace labels
     for(long int i = 0 ; i < addr; i++){
@@ -137,21 +145,8 @@ int main(){
         }
     }
 
-    // print stuff
-    /*
-    printf("\nLabel dump:\n");
-    label_dump(lbls->root);
-    printf("\n");
-    printf("Code dump: (after replacing labels)\n");
-    for(long int i = 0; i < addr; i++){
-        printf("%08ld: ", i*4);
-        inst_print(code[i].i);
-    }
-    */
-
     // print out binary
     for(long int i = 0; i < addr; i++){
-        //printf("%08ld: ", i*4);
         bin_print(inst_encode(code[i].i));
     }
 }
