@@ -44,49 +44,11 @@ void remove_comment(char *line){
     }
 }
 
-// print a struct inst in a (sort of) human-readable way
-void inst_print(struct inst in){
-    if(in.lbl == 0){
-        printf("%s: $%d, $%d, $%d  [%d]\n",
-                getop(in.type), in.d, in.s, in.t, in.i);
-    }else{
-        printf("%s: $%d, $%d, $%d  [%s]\n",
-                getop(in.type), in.d, in.s, in.t, in.lbl);
-    }
-}
-
-// dump the symbol table to STDOUT
-void label_dump(struct node *n){
-    if(n){
-        label_dump(n->l);
-        printf("%s->%ld\n", n->k, n->d);
-        label_dump(n->r);
-    }
-}
-
 // struct for holding instructions and line numbers
 struct instline {
     struct inst i;
     long int l;
 };
-
-// print out the reversed binary representation of a word
-/*
-void word_print(word w){
-    char *scratch = malloc(50);
-    for(int i = 0; i < 32; i++) scratch[i] = '0';
-
-    int ind = 39;
-    for(int i = 0; i < 32; i++){
-        if(i%4 == 0) scratch[ind--] = ' ';
-        scratch[ind--] = w%2 ? '1' : '0';
-        w /= 2;
-    }
-
-    printf("%s\n", scratch);
-    free(scratch);
-}
-*/
 
 // print out a word as binary
 void bin_print(word w){
@@ -123,18 +85,6 @@ int main(){
             addr++;
         }
     }
-
-    // print stuff
-    /*
-    printf("\nLabel dump:\n");
-    label_dump(lbls->root);
-    printf("\n");
-    printf("Code dump:\n");
-    for(long int i = 0; i < addr; i++){
-        printf("%08ld: ", i*4);
-        inst_print(code[i].i);
-    }
-    */
 
     // replace labels
     for(long int i = 0 ; i < addr; i++){
