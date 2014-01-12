@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 // read/set register macros
-#define RR(x) x ? m->reg[x-1] : 0
+#define RR(x) (x ? m->reg[x-1] : 0)
 #define SR(x,y) if(x) m->reg[x-1] = y;
 
 // merge 4 bytes (b[0] .. b[3]) into a word
