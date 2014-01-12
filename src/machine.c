@@ -28,6 +28,7 @@ struct machine machine_create(size_t n){
     m.n = n;
     m.reg = calloc(31,4);
     m.reg[30] = RETURN_ADDR;
+    m.reg[29] = n;
     m.pc = 0;
     m.hi = 0;
     m.lo = 0;
@@ -84,9 +85,21 @@ int machine_adv(struct machine *m, char *err){
             m->pc+=4;
         }
     }else if(in.type == 11){ // lw
-        SR(in.t, m->mem[RR(in.s) + in.i]);
+        word addr = RR(in.s) + in.i;
+        if(addr > m->n-4){
+            sprintf(err, "emulator: ERROR: attempted lw at address 0x%08x, but"
+                         " memory ends at 0x%08x\n", addr, (unsigned int)m->n);
+            return 1;
+        }
+        SR(in.t, m->mem[addr]);
     }else if(in.type == 12){ // sw
-        m->mem[RR(in.s) + in.i] = RR(in.t);
+        word addr = RR(in.s) + in.i;
+        if(addr > m->n-4){
+            sprintf(err, "emulator: ERROR: attempted sw at address 0x%08x, but"
+                         " memory ends at 0x%08x\n", addr, (unsigned int)m->n);
+            return 1;
+        }
+        m->mem[addr] = RR(in.t);
     }else if(in.type == 13){ // slt
         SR(in.d, mtosign(RR(in.s)) < mtosign(RR(in.t)) ? 1 : 0);
     }else if(in.type == 14){ // sltu
