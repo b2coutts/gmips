@@ -86,7 +86,7 @@ int machine_adv(struct machine *m, char *err){
         }
     }else if(in.type == 11){ // lw
         word addr = RR(in.s) + in.i;
-        if(addr > m->n-4){
+        if(addr > m->n-4){ // check for loads beyond memory
             sprintf(err, "emulator: ERROR: attempted lw at address 0x%08x, but"
                          " memory ends at 0x%08x\n", addr, (unsigned int)m->n);
             return 1;
@@ -94,7 +94,12 @@ int machine_adv(struct machine *m, char *err){
         SR(in.t, m->mem[addr]);
     }else if(in.type == 12){ // sw
         word addr = RR(in.s) + in.i;
-        if(addr > m->n-4){
+        if(addr == OUTPUT_ADDR){ // write lowest byte to STDOUT
+            err[0] = (RR(in.t) << 24) >> 24;
+            m->pc += 4;
+            return 2;
+        }
+        if(addr > m->n-4){ // check for stores beyond memory
             sprintf(err, "emulator: ERROR: attempted sw at address 0x%08x, but"
                          " memory ends at 0x%08x\n", addr, (unsigned int)m->n);
             return 1;

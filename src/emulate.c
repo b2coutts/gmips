@@ -20,7 +20,14 @@ int main(){
     }
 
     char *err = malloc(100);
-    while( !(b = machine_adv(&m, err)));
-    if(b == 1) fprintf(stderr, "%s", err);
+    printf("Machine output:\n");
+
+    b = machine_adv(&m, err);
+    while( b != 1 && b != 9 ){
+        if(b == 2) putchar(err[0]);
+        b = machine_adv(&m, err);
+    }
+    if(b == 1) fprintf(stderr, "\n%s", err);
+    printf("\n");
     machine_dump(m);
 }

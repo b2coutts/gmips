@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #define RETURN_ADDR 0xffff0010 // TODO: unhardcode?
+#define OUTPUT_ADDR 0xffff000c
 
 typedef unsigned char byte;
 
@@ -24,7 +25,9 @@ struct machine machine_create(size_t n);
 void machine_destroy(struct machine m);
 
 // advance the machine by 1 step; on success return 0, on termination (i.e., jr
-// $31) return 9, on failure return 1 and write an error to err
+// $31) return 9, on failure return 1 and write an error to err. If a word is
+// written to OUTPUT_ADDR, return 2 and write the character to be written to
+// the beginning of err
 int machine_adv(struct machine *m, char *err);
 
 // dump the contents of the registers and PC to stdout
