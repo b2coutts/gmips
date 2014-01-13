@@ -86,6 +86,11 @@ int machine_adv(struct machine *m, char *err){
         }
     }else if(in.type == 11){ // lw
         word addr = RR(in.s) + in.i;
+        if(addr == INPUT_ADDR){ // read in highest bytes from STDIN
+            SR(in.t, (word) getchar());
+            m->pc += 4;
+            return 0;
+        }
         if(addr > m->n-4){ // check for loads beyond memory
             sprintf(err, "emulator: ERROR: attempted lw at address 0x%08x, but"
                          " memory ends at 0x%08x\n", addr, (unsigned int)m->n);

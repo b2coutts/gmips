@@ -3,6 +3,7 @@
 
 #define RETURN_ADDR 0xffff0010 // TODO: unhardcode?
 #define OUTPUT_ADDR 0xffff000c
+#define INPUT_ADDR  0xffff0004
 
 typedef unsigned char byte;
 
