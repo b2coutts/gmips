@@ -31,7 +31,7 @@ int main(int argc, char *argv[]){
     }
 
     char *err = malloc(100);
-    printf("Machine output:\n");
+    fprintf(stderr, "Machine output:\n");
 
     b = machine_adv(&m, err);
     while( b != 1 && b != 9 ){
@@ -39,6 +39,6 @@ int main(int argc, char *argv[]){
         b = machine_adv(&m, err);
     }
     if(b == 1) fprintf(stderr, "\n%s", err);
-    printf("\n");
+    fprintf(stderr, "\n");
     machine_dump(m);
 }
