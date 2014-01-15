@@ -61,7 +61,7 @@ void bin_print(word w){
 // stop those annoying compiler warnings
 size_t getline(char **lineptr, size_t *n, FILE *stream);
 
-int main(){
+int main(int argc, char *argv[]){
     struct instline *code = malloc(sizeof(struct instline) * ARRAY_SIZE);
     long int addr = 0; // keeps track of index in above array
     size_t len = 0; // holds lengths of lines from stdin
@@ -70,8 +70,18 @@ int main(){
     struct AVLTree *lbls = avl_create(); // holds the symbol table
     unsigned int nline = 0; // keeps track of line number from stdin
 
+    if(argc <= 1){
+        // TODO: add (optional?) argument for output file
+        fprintf(stderr, "Usage: %s [asm_file]\n", argv[0]);
+        return 1;
+    }
+    FILE *fp = fopen(argv[1], "r");
+    if(!fp){
+        fprintf(stderr, "Could not open file \"%s\".\n", argv[1]);
+    }
+
     // read instructions into array
-    while(getline(&line, &len, stdin) != -1){
+    while(getline(&line, &len, fp) != -1){
         nline++;
         remove_comment(line);
         struct inst in = inst_parse(line, nline, err, addr, lbls);
