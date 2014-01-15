@@ -1,7 +1,4 @@
 // TODO: right now, the parser ignores all garbage after the ends of lines
-// TODO: what exactly are the bounds on .word arguments? can they be greater
-    // than 2^31, in which case they're unsigned instead of signed? maybe hex
-    // numbers are always unsigned? try to find the spec. 
 #include "parse.h"
 #include <string.h>
 #include <stdio.h>
@@ -83,7 +80,6 @@ int32_t sint_parse(char *str, int n, type_t *t, char **r, unsigned int line,
         WERR("failed to parse %d-bit signed int\n", n);
         return 0;
     }else if((!ishex) && (i < -pwr2(n-1) || i >= pwr2(n-1))){
-        // TODO: this is dumb; is it really in the spec?
         if(i > 0 && i < pwr2(n)){
             i -= pwr2(n);
         }else{
@@ -192,7 +188,6 @@ struct inst inst_parse(char *str, unsigned int line, char *err,
     }
 
     // TODO: does not ensure commas are there right now
-    // TODO: only allows decimal numbers (no hex)
     if(in.type == 1){ // .word
         char *num = strtok(0, " \t\n");
         if(num && isalpha(num[0])){ // attempt to parse a label
