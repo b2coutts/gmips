@@ -38,6 +38,8 @@ int main(int argc, char *argv[]){
         if(b == 2) putchar(err[0]);
         b = machine_adv(&m, err);
     }
+
+    fflush(stdout);
     if(b == 1) fprintf(stderr, "\n%s", err);
     fprintf(stderr, "\n");
     machine_dump(m);
