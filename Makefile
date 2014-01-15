@@ -1,8 +1,11 @@
 CC = gcc
 CFLAGS = -std=c99 -Wall
 
-all: bin/emulate bin/assemble
+all: bin/emulate bin/assemble bin/run
 
+bin/run: bin/emulate bin/assemble
+	rm -f bin/run
+	ln -s ../src/run.sh bin/run
 
 bin/emulate: obj/emulate.o obj/machine.o obj/parse.o obj/avl.o
 	@mkdir -p bin
