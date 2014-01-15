@@ -132,11 +132,14 @@ int machine_adv(struct machine *m, char *err){
 
 void machine_dump(struct machine m){
     fprintf(stderr, "State of MIPS virtual machine:\n");
-    fprintf(stderr, "PC = 0x%08x (%08u)\n", m.pc, m.pc);
+    fprintf(stderr, " PC = 0x%08x (%010u)          ", m.pc, m.pc);
+    fprintf(stderr, "hi = 0x%08x    lo = 0x%08x\n\n", m.hi, m.lo);
 
-    // TODO: tile nicely instead of line-by-line
-    for(int i = 1; i < 32; i++){
-        fprintf(stderr, "$%d = 0x%08x\n", i, m.reg[i-1]);
+    for(int i = 1; i < 32; i+=4){
+        for(int j = i; j < i+4 && j < 32; j++){
+            fprintf(stderr, "%s$%d = 0x%08x", (j<10 ? " " : ""), j, m.reg[j-1]);
+            if(j != i+4) fprintf(stderr, "   ");
+        }
+        fprintf(stderr, "\n");
     }
-    fprintf(stderr, "hi = 0x%08x\nlo = 0x%08x\n", m.hi, m.lo);
 }
