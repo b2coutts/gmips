@@ -1,4 +1,5 @@
-GMIPS is a MIPS assembler and emulator.
+`gmips` is an assembler and emulator for the simple MIPS-like machine used in
+CS 241 at the University of Waterloo.
 
 
 INSTALLATION
